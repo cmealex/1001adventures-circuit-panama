@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<title>Beach Bum Holiday – Panama</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f4f6fb;
+  color: #1f2937;
+}
+
+/* HEADER */
+header {
+  background: linear-gradient(135deg,#0b5ed7,#084298);
+  color: white;
+  padding: 18px 16px;
+  text-align: center;
+}
+
+/* MOBILE FIRST */
+.timeline {
+  padding: 16px;
+}
+
+.day {
+  background: #eef3ff;
+  border-left: 6px solid #0b5ed7;
+  padding: 16px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+}
+
+.day h3 {
+  margin: 0;
+  color: #0b5ed7;
+  font-size: 15px;
+}
+
+.day p {
+  margin: 8px 0 12px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+button {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.map-btn {
+  background: #0b5ed7;
+  color: white;
+}
+
+.details-btn {
+  background: #e5edff;
+  color: #0b5ed7;
+}
+
+/* MAP */
+#map {
+  height: 45vh;
+  margin: 0 16px 16px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+/* DETAILS OVERLAY */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 1000;
+}
+
+.overlay.active {
+  display: block;
+}
+
+.details-modal {
+  position: absolute;
+  bottom: 0;
+  background: white;
+  width: 100%;
+  max-height: 80vh;
+  border-radius: 20px 20px 0 0;
+  padding: 18px;
+  overflow-y: auto;
+}
+
+.details-modal h4 {
+  margin-top: 0;
+  color: #0b5ed7;
+}
+
+.close-btn {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  font-size: 18px;
+  background: none;
+}
+
+/* FOOTER */
+footer {
+  text-align: center;
+  font-size: 13px;
+  padding: 14px;
+  color: #656565;
+}
+
+/* DESKTOP */
+@media (min-width: 900px) {
+  .layout {
+    display: flex;
+    height: calc(100vh - 80px);
+  }
+  .timeline {
+    width: 40%;
+    overflow-y: auto;
+  }
+  #map {
+    width: 60%;
+    height: auto;
+    margin: 16px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>Beach Bum Holiday – Panama 🇵🇦</h1>
+  <p>27 decembrie 2025 – 9 ianuarie 2026</p>
+</header>
+
+<div class="layout">
+  <div class="timeline" id="timeline"></div>
+  <div id="map"></div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="details-modal">
+    <button class="close-btn" onclick="closeDetails()">✕</button>
+    <div id="detailsContent"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+const itinerary = [
+{
+day:"Ziua 1 – 27 decembrie",
+title:"Ciudad de Panama",
+desc:"Sosire și relaxare.",
+full:`Sosire pe aeroportul din Ciudad de Panama și transfer la hotel. Restul zilei este liber pentru odihnă sau explorarea împrejurimilor.`,
+coords:[8.9824,-79.5199]
+},
+{
+day:"Ziua 2 – 28 decembrie",
+title:"Ciudad de Panama",
+desc:"Tur de oraș.",
+full:`După micul dejun începem turul capitalei. Vizităm Casco Viejo (UNESCO), apoi Insulele Calzada de Amador și ecluzele Miraflores ale Canalului Panama.`,
+coords:[8.9526,-79.5357]
+},
+{
+day:"Ziua 3 – 29 decembrie",
+title:"Panama → Santa Catalina",
+desc:"Drum spre Pacific.",
+full:`Traversăm aproape jumătate de țară până la Santa Catalina, unde petrecem după-amiaza explorând împrejurimile și înotând în ocean.`,
+coords:[7.6376,-81.2596]
+},
+{
+day:"Ziua 4 – 30 decembrie",
+title:"Santa Catalina",
+desc:"Zi liberă.",
+full:`Zi opțională pentru scufundări în Parcul Național Coiba (UNESCO), snorkeling, surf sau relaxare pe plajă.`,
+coords:[7.6376,-81.2596]
+},
+{
+day:"Ziua 5 – 31 decembrie",
+title:"Santa Catalina → Boquete",
+desc:"Transfer montan.",
+full:`După micul dejun, transfer spre Boquete, orășel montan pitoresc la 1200 m altitudine, cu o scurtă drumeție de acomodare.`,
+coords:[8.7802,-82.4412]
+},
+{
+day:"Ziua 6 – 1 ianuarie",
+title:"Boquete & Vulcanul Baru",
+desc:"Aventură montană.",
+full:`Jeep tour până pe vulcanul Baru, cel mai înalt vârf din Panama, cu priveliști incredibile. După-amiază, poduri suspendate și cascade.`,
+coords:[8.8083,-82.5436]
+},
+{
+day:"Ziua 7 – 2 ianuarie",
+title:"Boquete → Bocas del Toro",
+desc:"Caraibe.",
+full:`După micul dejun, plecăm spre arhipelagul Bocas del Toro, plaje, atmosferă vibrantă și apusuri fabuloase.`,
+coords:[9.3406,-82.2409]
+},
+{
+day:"Ziua 8 – 3 ianuarie",
+title:"Bocas: Playa Estrellas & Boca Drago",
+desc:"Excursie cu barca.",
+full:`Explorăm Playa de las Estrellas, Boca del Drago și Insula Păsărilor în arhipelagul Bocas del Toro, cu ape cristaline și recife.`,
+coords:[9.3937,-82.3275]
+},
+{
+day:"Ziua 9 – 4 ianuarie",
+title:"Cayo Coral & Zapatillas",
+desc:"Snorkeling.",
+full:`În Bocas, snorkeling la Cayo Coral și apoi relaxare pe plaja superbă de la Cayo Zapatillas.`,
+coords:[9.2649,-82.1434]
+},
+{
+day:"Ziua 10 – 5 ianuarie",
+title:"Bocas → Ciudad de Panama",
+desc:"Întoarcere în capitală.",
+full:`După micul dejun, ultimele clipe în Bocas del Toro, apoi transfer la aeroport și zbor spre Ciudad de Panama. Transferul la hotel și timp liber.`,
+coords:[8.9824,-79.5199]
+},
+{
+day:"Ziua 11 – 6 ianuarie",
+title:"Ciudad de Panama → San Blas",
+desc:"Călătorie pe mare.",
+full:`Plecăm spre portul Carti după micul dejun. Barcă motorizată spre insulele San Blas – peisaj paradisiac și cazare simplă, autentică cu localnicii Kuna.`,
+coords:[9.5436,-78.8986]
+},
+{
+day:"Ziua 12 – 7 ianuarie",
+title:"Insulele San Blas",
+desc:"Relax total.",
+full:`Zi liberă în San Blas – apă cristalina, plaje cu palmieri și relaxare totală fără internet sau civilizație urbană.`,
+coords:[9.5436,-78.8986]
+},
+{
+day:"Ziua 13 – 8 ianuarie",
+title:"San Blas → Ciudad de Panama",
+desc:"Întoarcere pe continent.",
+full:`După micul dejun, plecăm din paradisul insular spre continent și ne întoarcem la Ciudad de Panama cu jeepurile.`,
+coords:[8.9824,-79.5199]
+},
+{
+day:"Ziua 14 – 9 ianuarie",
+title:"Ciudad de Panama",
+desc:"Shopping & plecare.",
+full:`Folosește prima parte a zilei pentru shopping sau explorări scurte. La ora potrivită, transfer la aeroport pentru zborul spre casă.`,
+coords:[8.9824,-79.5199]
+}
+];
+
+const map = L.map('map').setView([8.6,-80],6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+const timeline = document.getElementById("timeline");
+
+function openDetails(html){
+  document.getElementById("detailsContent").innerHTML = html;
+  document.getElementById("overlay").classList.add("active");
+}
+
+function closeDetails(){
+  document.getElementById("overlay").classList.remove("active");
+}
+
+itinerary.forEach(item=>{
+  const marker = L.marker(item.coords).addTo(map)
+    .bindPopup(`<strong>${item.title}</strong>`);
+
+  const div = document.createElement("div");
+  div.className = "day";
+  div.innerHTML = `
+    <h3>${item.day}</h3>
+    <p><strong>${item.title}</strong><br>${item.desc}</p>
+    <div class="actions">
+      <button class="map-btn">📍 Vezi pe hartă</button>
+      <button class="details-btn">📖 Detalii</button>
+    </div>
+  `;
+
+  div.querySelector(".map-btn").onclick = ()=>{
+    map.setView(item.coords,9);
+    marker.openPopup();
+  };
+
+  div.querySelector(".details-btn").onclick = ()=>{
+    openDetails(`<h4>${item.title}</h4><p>${item.full}</p>`);
+  };
+
+  timeline.appendChild(div);
+});
+</script>
+
+<footer>
+  Sursa itinerariului: <a href="https://www.1001adventures.ro/circuit-panama" target="_blank">1001adventures.ro</a><br>
+  Creat de <a href="https://www.linkedin.com/in/simionalexandrumihail/" target="_blank">Alex Simion</a>
+</footer>
+
+</body>
+</html>
